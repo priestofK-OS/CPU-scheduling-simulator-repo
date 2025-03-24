@@ -61,3 +61,42 @@ def sjf(processes):
 
     avg_waiting_time, avg_turnaround_time = calculate_metrics(completed)
     return gantt_chart, avg_waiting_time, avg_turnaround_time, completed
+    def get_processes_from_user():
+    processes = []
+    while True:
+        try:
+            num_processes = int(input("Enter the number of processes: "))
+            break
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
+
+    priority_involved = input("Are priorities involved? (yes/no): ").lower() == 'yes'
+
+    for i in range(num_processes):
+        pid = i + 1
+        while True:
+            try:
+                arrival_time = int(input(f"Enter arrival time for process {pid}: "))
+                break
+            except ValueError:
+                print("Invalid arrival time. Please enter an integer.")
+        while True:
+            try:
+                burst_time = int(input(f"Enter burst time for process {pid}: "))
+                break
+            except ValueError:
+                print("Invalid burst time. Please enter an integer.")
+
+        if priority_involved:
+            while True:
+                priority_input = input(f"Enter priority for process {pid}: ")
+                try:
+                    priority = int(priority_input)
+                    break
+                except ValueError:
+                    print("Invalid priority. Please enter an integer.")
+        else:
+            priority = None
+
+        processes.append(Process(pid, arrival_time, burst_time, priority))
+    return processes
