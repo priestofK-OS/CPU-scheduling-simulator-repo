@@ -34,6 +34,21 @@ def calculate_metrics(processes):
     print(f"Metrics: Wait={avg_waiting_time:.2f}, Turn={avg_turnaround_time:.2f}, CPU={cpu_utilization:.2f}%, Throughput={throughput:.4f}")
     return avg_waiting_time, avg_turnaround_time, cpu_utilization, throughput
 
+def fcfs(processes):
+    processes_copy = sorted(processes, key=lambda x: x.arrival_time)
+    current_time = 0
+    gantt_chart = []
+    print("FCFS Execution:")
+    for process in processes_copy:
+        if current_time < process.arrival_time:
+            current_time = process.arrival_time
+        start_time = current_time
+        process.completion_time = current_time + process.burst_time
+        current_time = process.completion_time
+        gantt_chart.append((process.pid, start_time, current_time))
+        print(f"P{process.pid}: Start={start_time}, End={current_time}")
+    return gantt_chart, processes_copy, *calculate_metrics(processes_copy)
+
 if __name__ == "__main__":
     # Test with sample processes
     processes = [
