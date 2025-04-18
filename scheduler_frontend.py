@@ -5,6 +5,7 @@ matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 from scheduler_backend import Process, fcfs, sjf, preemptive_sjf, round_robin, priority_scheduling
+
 class SchedulerApp:
     def __init__(self, root):
         self.root = root
@@ -169,3 +170,103 @@ class SchedulerApp:
                 self.results[algo] = metrics
 
         self.create_comparison_tab()
+
+    def create_result_tab(self, algo, gantt, completed, metrics):
+        tab = ttk.Frame(self.notebook)
+        self.notebook.add(tab, text=algo)
+
+        # Gantt Chart
+        fig, ax = plt.subplots(figsize=(5, 2))
+        for pid, start, end in gantt:
+            ax.barh(pid, end - start, left=start, height=0.8, color="#4a90e2")
+            ax.text((start + end) / 2, pid, str(pid), ha='center', va='center', color="white")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("PID")
+        ax.set_title(f"{algo} Gantt Chart", fontsize=10)
+        ax.grid(axis="x", linestyle="--", alpha=0.7)
+        canvas = FigureCanvasTkAgg(fig, master=tab)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=0, padx=5, pady=5)
+
+        # Process Table
+        table_frame = ttk.Frame(tab)
+        table_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=1, padx=5, pady=5)
+        tree = ttk.Treeview(table_frame, columns=("PID", "Arrival", "Burst", "Completion", "Waiting", "Turnaround"), 
+                            show="headings", height=5)
+        tree.heading("PID", text="PID")
+        tree.heading("Arrival", text="Arrival")
+        tree.heading("Burst", text="Burst")
+        tree.heading("Completion", text="Completion")
+        tree.heading("Waiting", text="Waiting")
+        tree.heading("Turnaround", text="Turnaround")
+        tree.column("PID", width=50)
+        tree.column("Arrival", width=80)
+        tree.column("Burst", width=80)
+        tree.column("Completion", width=100)
+        tree.column("Waiting", width=80)
+        tree.column("Turnaround", width=100)
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        tree.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        table_frame.rowconfigure(0, weight=1)
+        table_frame.columnconfigure(0, weight=1)
+        for p in completed:
+            tree.insert("", "end", values=(p.pid, p.arrival_time, p.burst_time, p.completion_time, p.waiting_time, p.turnaround_time))
+
+        # Metrics
+        metrics_frame = ttk.Frame(tab)
+        metrics_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
+        ttk.Label(metrics_frame, text=f"Avg Waiting: {metrics[0]:.2f}", font=("Helvetica", 10)).pack(pady=2)
+        ttk.Label(metrics_frame, text=f"Avg Turnaround: {metrics[1]:.2f}", font=("Helvetica", 10)).pack(pady=2)
+        ttk.Label(metrics_frame, text=f"CPU Util: {metrics[2]:.2f}%", font=("Helvetica", 10)).pack(pady=2)
+        ttk.Label(metrics_frame, text=f"Throughput: {metrics[3]:.4f}", font=("Helvetica", 10)).pack(pady=2)
+        ttk.Button(metrics_frame, text="Export Chart", command=lambda: fig.savefig(f"{algo}_gantt.png")).pack(pady=5)
+
+    def create_comparison_tab(self):
+        tab = ttk.Frame(self.notebook)
+        self.notebook.add(tab, text="Comparison")
+
+        # Comparison Frame
+        comparison_frame = ttk.Frame(tab)
+        comparison_frame.pack(fill=tk.BOTH, expand=1, padx=10, pady=10)
+
+        # Header
+        ttk.Label(comparison_frame, text="Algorithm Comparison", font=("Helvetica", 14, "bold")).grid(row=0, column=0, columnspan=6, pady=5)
+        ttk.Label(comparison_frame, text="Algorithm", font=("Helvetica", 10, "bold")).grid(row=1, column=0, sticky="w", padx=5)
+        ttk.Label(comparison_frame, text="Avg Waiting", font=("Helvetica", 10, "bold")).grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(comparison_frame, text="Avg Turnaround", font=("Helvetica", 10, "bold")).grid(row=1, column=2, sticky="w", padx=5)
+        ttk.Label(comparison_frame, text="CPU Util (%)", font=("Helvetica", 10, "bold")).grid(row=1, column=3, sticky="w", padx=5)
+        ttk.Label(comparison_frame, text="Throughput", font=("Helvetica", 10, "bold")).grid(row=1, column=4, sticky="w", padx=5)
+        ttk.Label(comparison_frame, text="Optimal", font=("Helvetica", 10, "bold")).grid(row=1, column=5, sticky="w", padx=5)
+
+        # Determine the optimal algorithm
+        optimal_algo = min(self.results, key=lambda algo: self.results[algo][0] + self.results[algo][1])
+        
+        # Data for all algorithms
+        all_algorithms = ["FCFS", "SJF", "Preemptive SJF", "Round Robin", "Priority"]
+        for i, algo in enumerate(all_algorithms):
+            wait, turn, cpu, throughput = self.results[algo]
+            is_optimal = algo == optimal_algo
+            optimality_text = "Yes" if is_optimal else "No"
+            ttk.Label(comparison_frame, text=algo).grid(row=i+2, column=0, sticky="w", padx=5, pady=2)
+            ttk.Label(comparison_frame, text=f"{wait:.2f}").grid(row=i+2, column=1, sticky="w", padx=5, pady=2)
+            ttk.Label(comparison_frame, text=f"{turn:.2f}").grid(row=i+2, column=2, sticky="w", padx=5, pady=2)
+            ttk.Label(comparison_frame, text=f"{cpu:.2f}").grid(row=i+2, column=3, sticky="w", padx=5, pady=2)
+            ttk.Label(comparison_frame, text=f"{throughput:.4f}").grid(row=i+2, column=4, sticky="w", padx=5, pady=2)
+            ttk.Label(comparison_frame, text=optimality_text, foreground="green" if is_optimal else "red").grid(row=i+2, column=5, sticky="w", padx=5, pady=2)
+
+    def save_results(self):
+        with open("scheduling_results.txt", "w") as f:
+            for algo, metrics in self.results.items():
+                f.write(f"{algo}:\n")
+                f.write(f"  Avg Waiting Time: {metrics[0]}\n")
+                f.write(f"  Avg Turnaround Time: {metrics[1]}\n")
+                f.write(f"  CPU Utilization: {metrics[2]:.2f}%\n")
+                f.write(f"  Throughput: {metrics[3]:.4f}\n\n")
+        messagebox.showinfo("Success", "Results saved to 'scheduling_results.txt'")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SchedulerApp(root)
+    root.mainloop()
